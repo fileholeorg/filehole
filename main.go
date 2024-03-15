@@ -221,12 +221,14 @@ func main() {
 	}
 
 	fh := FileholeServer{}
+        fhPublicUrlDefault := getEnv("FH_PUBLIC_URL", "https://filehole.org")
+
 	flag.StringVar(&fh.Bind, "bind", getEnv("FH_BIND", "127.0.0.1:8000"), "Address to bind ENV: FH_BIND")
 	flag.StringVar(&fh.MetadataFile, "metadata-path", getEnv("FH_METADATA_FILE", "./filehole.db"), "File metadata storage KV store filename ENV: FH_METADATA_FILE")
 	flag.StringVar(&fh.StorageDir, "storage-dir", getEnv("FH_STORAGE_DIR", "./data"), "Data storage folder ENV: FH_STORAGE_DIR")
 	flag.StringVar(&fh.BufferDir, "buffer-dir", getEnv("FH_BUFFER_DIR", "./buffer"), "Buffer folder for uploads ENV: FH_STORAGE_DIR")
-	flag.StringVar(&fh.PublicUrl, "public-url", getEnv("FH_PUBLIC_URL", "https://filehole.org"), "Internet facing URL of the base of the site ENV: FH_PUBLIC_URL")
-	flag.StringVar(&fh.ServeUrl, "serve-url", getEnv("FH_SERVE_URL", "https://filehole.org"), "Internet facing URL of the base of uploads, only for using a CDN, object storage, etc. ENV: FH_SERVE_URL")
+	flag.StringVar(&fh.PublicUrl, "public-url", getEnv("FH_PUBLIC_URL", fhPublicUrlDefault), "Internet facing URL of the base of the site ENV: FH_PUBLIC_URL")
+	flag.StringVar(&fh.ServeUrl, "serve-url", getEnv("FH_SERVE_URL", fhPublicUrlDefault), "Internet facing URL of the base of uploads, only for using a CDN, object storage, etc. ENV: FH_SERVE_URL")
 	flag.StringVar(&fh.SiteName, "site-name", getEnv("FH_SITE_NAME", "Filehole"), "User facing website branding ENV: FH_SITE_NAME")
 
 	fh.Debug = os.Getenv("FH_DEBUG") != ""

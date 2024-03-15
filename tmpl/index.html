@@ -3,9 +3,9 @@
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ .SiteName }}</title>
-
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.colors.min.css"/>
+    <link rel="stylesheet" href="/asset/filehole.css"/>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="/asset/filehole.js"></script>
   </head>
@@ -19,7 +19,7 @@
         <section>
         <b>Settings</b>
         </section>
-        <section style="margin-bottom: 0px;">
+        <section class="nomargin">
           <form method="POST" enctype="multipart/form-data">
             <div class="grid">
               <div>
@@ -49,24 +49,25 @@
           </form>
         </section>
       </article>
-      <article id="upload-browse" style="display: none;">
-      </article>
-      <article id="file-queue" style="display: none;">
-      </article>
-      <article id="file-history" style="display: none;"> 
+      <article id="upload-browse" class="needs-javascript"></article>
+      <article id="file-queue" class="needs-javascript"></article>
+      <article id="file-history" class="needs-javascript"> 
         <section>
           <b>History</b>
         </section>
         <section>
-          <input id="history-optin" type="checkbox" role="switch">Opt in to file history (uses localStorage)</input>
+          <input id="history-optin" type="checkbox" role="switch"><span>Opt in to file history (uses localStorage)</span>
         </section>
         <section>
-          <button onClick="clearHistory()">Clear History</button>
+          <button id="clear-history">Clear History</button>
         </section>
         <section id="file-history-list">
         </section>
       </article>
       <noscript><small>Multiple file uploads, and storing history are unsupported without JavaScript.</small></noscript>
+      <section>
+        <small>Tired of putting your files in my hole? Put your files in your hole. <a href="https://github.com/fileholeorg/filehole">Github</a></small>
+      </section>
     </main> 
   </body>
 </html>

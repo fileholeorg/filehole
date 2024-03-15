@@ -1,0 +1,17 @@
+.nomargin {
+  margin-bottom: 0px;
+}
+
+.needs-javascript {
+  display: none;
+}
+
+span.delete-btn {
+  float: right;
+  display: inline-block;
+  text-align: right;
+}
+
+span.mimetype {
+  display: inline-block;
+}

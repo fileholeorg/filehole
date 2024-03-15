@@ -24,7 +24,6 @@ import (
 	"github.com/boltdb/bolt"
 
 	"github.com/gabriel-vasile/mimetype"
-	// "github.com/landlock-lsm/go-landlock/landlock"
 )
 
 func shortID(length int64) string {
@@ -191,11 +190,16 @@ func (fh FileholeServer) UploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// TODO: embed.fs
+//
 //go:embed tmpl/index.html
 var indexPage []byte
 
 //go:embed tmpl/filehole.js
 var frontendJs []byte
+
+//go:embed tmpl/filehole.css
+var frontendCss []byte
 
 type FileholeServer struct {
 	Bind         string
@@ -210,6 +214,15 @@ type FileholeServer struct {
 	UploadLimit int64
 }
 
+func CSPMiddleware() mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			w.Header().Set("Content-Security-Policy", `default-src 'self'; script-src 'report-sample' 'self' https://code.jquery.com/jquery-3.7.1.min.js; style-src 'report-sample' 'self' https://cdn.jsdelivr.net; object-src 'none'; base-uri 'self'; connect-src 'self'; font-src 'self'; frame-src 'self'; img-src 'self' data:; manifest-src 'self'; media-src 'self'; worker-src 'none';`)
+			next.ServeHTTP(w, req)
+		})
+	}
+}
+
 func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
@@ -221,7 +234,7 @@ func main() {
 	}
 
 	fh := FileholeServer{}
-        fhPublicUrlDefault := getEnv("FH_PUBLIC_URL", "https://filehole.org")
+	fhPublicUrlDefault := getEnv("FH_PUBLIC_URL", "https://filehole.org")
 
 	flag.StringVar(&fh.Bind, "bind", getEnv("FH_BIND", "127.0.0.1:8000"), "Address to bind ENV: FH_BIND")
 	flag.StringVar(&fh.MetadataFile, "metadata-path", getEnv("FH_METADATA_FILE", "./filehole.db"), "File metadata storage KV store filename ENV: FH_METADATA_FILE")
@@ -301,6 +314,8 @@ func main() {
 
 	r := mux.NewRouter()
 
+	r.Use(CSPMiddleware())
+
 	// Serve multiple images in a gallery
 	r.HandleFunc("/g/{files}", fh.GalleryHandler)
 
@@ -315,6 +330,11 @@ func main() {
 			"SiteName":  fh.SiteName,
 			"Debug":     fh.Debug,
 		})
+	}).Methods("GET")
+
+	r.HandleFunc("/asset/filehole.css", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Add("Content-Type", "text/css")
+		w.Write(frontendCss)
 	}).Methods("GET")
 
 	r.HandleFunc("/asset/filehole.js", func(w http.ResponseWriter, _ *http.Request) {

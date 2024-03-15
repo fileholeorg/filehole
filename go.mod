@@ -1,4 +1,4 @@
-module git.tcp.direct/hgc/filehole
+module github.com/fileholeorg/filehole
 
 go 1.19
 
@@ -6,7 +6,6 @@ require (
 	github.com/boltdb/bolt v1.3.1
 	github.com/gabriel-vasile/mimetype v1.4.3
 	github.com/gorilla/mux v1.8.1
-	github.com/landlock-lsm/go-landlock v0.0.0-20240119214949-7547b7fce44e
 	github.com/rs/zerolog v1.32.0
 	github.com/spf13/viper v1.18.2
 )
@@ -24,10 +23,8 @@ require (
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
-	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20240205201215-2c58cdc269a3 // indirect
 	golang.org/x/net v0.21.0 // indirect
@@ -35,5 +32,4 @@ require (
 	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	kernel.org/pub/linux/libs/security/libcap/psx v1.2.69 // indirect
 )

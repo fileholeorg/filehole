@@ -218,6 +218,7 @@ func CSPMiddleware() mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			w.Header().Set("Content-Security-Policy", `default-src 'self'; script-src 'report-sample' 'self' https://code.jquery.com/jquery-3.7.1.min.js; style-src 'report-sample' 'self' https://cdn.jsdelivr.net; object-src 'none'; base-uri 'self'; connect-src 'self'; font-src 'self'; frame-src 'self'; img-src 'self' data:; manifest-src 'self'; media-src 'self'; worker-src 'none';`)
+			w.Header().Set("Permissions-Policy", `geolocation=(), camera=(), microphone=(), interest-cohort=()`)
 			next.ServeHTTP(w, req)
 		})
 	}

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ .SiteName }}</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.colors.min.css"/>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="/asset/filehole.js"></script>
+  </head>
+  <body>
+    <main class="container">
+      <section>
+        <h1>{{ .SiteName }}</h1>
+        <p>CTRL + V to upload by paste</p>
+      </section>
+      <article>
+        <section>
+        <b>Settings</b>
+        </section>
+        <section style="margin-bottom: 0px;">
+          <form method="POST" enctype="multipart/form-data">
+            <div class="grid">
+              <div>
+                <p>URL Length</p>
+                <input id="urllen" type="number" name="url_len" min="5" max="236" value="5" aria-label="URL Length" />
+                <small id="url-preview"></small>
+              </div>
+              <div>
+                <p>Expiry Time</p>
+                <select id="expiry" name="expiry">
+                  <option value="3600">1 hour</option>
+                  <option value="18000">5 hours</option>
+                  <option value="86400" selected>1 day</option>
+                  <option value="140400">39 hours</option>
+                  <option value="172800">2 days</option>
+                  <option value="248400">69 hours</option>
+                  <option value="432000">5 days</option>
+                </select>
+              </div>
+            </div>
+            <noscript> 
+              <div>
+                <input type="file" name="file"></input>
+                <input type="submit" value="Upload"></input>
+              </div>
+            </noscript>
+          </form>
+        </section>
+      </article>
+      <article id="upload-browse" style="display: none;">
+      </article>
+      <article id="file-queue" style="display: none;">
+      </article>
+      <article id="file-history" style="display: none;"> 
+        <section>
+          <b>History</b>
+        </section>
+        <section>
+          <input id="history-optin" type="checkbox" role="switch">Opt in to file history (uses localStorage)</input>
+        </section>
+        <section>
+          <button onClick="clearHistory()">Clear History</button>
+        </section>
+        <section id="file-history-list">
+        </section>
+      </article>
+      <noscript><small>Multiple file uploads, and storing history are unsupported without JavaScript.</small></noscript>
+    </main> 
+  </body>
+</html>

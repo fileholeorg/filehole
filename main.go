@@ -213,6 +213,8 @@ func (fh *FileholeServer) CSPMiddleware() mux.MiddlewareFunc {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			w.Header().Set(`Permissions-Policy`, `geolocation=(), camera=(), microphone=(), interest-cohort=()`)
 			w.Header().Set(`X-Frame-Options`, `DENY`)
+			w.Header().Set(`X-Content-Type-Options`, `nosniff`)
+			w.Header().Set(`Referrer-Policy`, `no-referrer`)
 
 			if !fh.CSPDisabled {
 				cspNonce := shortID(32)
@@ -221,7 +223,7 @@ func (fh *FileholeServer) CSPMiddleware() mux.MiddlewareFunc {
 				csp := `default-src 'none'; `
 				csp += `script-src 'nonce-` + cspNonce + `'; `
 				csp += `style-src 'nonce-` + cspNonce + `'; `
-				csp += `connect-src 'self'; img-src 'self' data:; manifest-src 'self'; media-src 'self'; form-action 'self'; base-uri 'none';`
+				csp += `connect-src 'self'; img-src 'self' data:; manifest-src 'self'; media-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none';`
 
 				log.Debug().Str("siteCsp", csp).Send()
 

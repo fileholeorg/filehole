@@ -2,8 +2,9 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
-	_ "embed"
+	"embed"
 	"errors"
 	"flag"
 	"html"
@@ -190,16 +191,8 @@ func (fh FileholeServer) UploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// TODO: embed.fs
-//
-//go:embed tmpl/index.html
-var indexPage []byte
-
-//go:embed tmpl/filehole.js
-var frontendJs []byte
-
-//go:embed tmpl/filehole.css
-var frontendCss []byte
+//go:embed assets/*
+var assetsFs embed.FS
 
 type FileholeServer struct {
 	Bind         string
@@ -210,15 +203,34 @@ type FileholeServer struct {
 	ServeUrl     string
 	SiteName     string
 	Debug        bool
+	CSPDisabled  bool
 
 	UploadLimit int64
 }
 
-func CSPMiddleware() mux.MiddlewareFunc {
+func (fh *FileholeServer) CSPMiddleware() mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			w.Header().Set("Content-Security-Policy", `default-src 'self'; script-src 'report-sample' 'self' https://code.jquery.com/jquery-3.7.1.min.js; style-src 'report-sample' 'self' https://cdn.jsdelivr.net; object-src 'none'; base-uri 'self'; connect-src 'self'; font-src 'self'; frame-src 'self'; img-src 'self' data:; manifest-src 'self'; media-src 'self'; worker-src 'none';`)
-			w.Header().Set("Permissions-Policy", `geolocation=(), camera=(), microphone=(), interest-cohort=()`)
+			w.Header().Set(`Permissions-Policy`, `geolocation=(), camera=(), microphone=(), interest-cohort=()`)
+			w.Header().Set(`X-Frame-Options`, `DENY`)
+
+			if !fh.CSPDisabled {
+				cspNonce := shortID(32)
+				c := context.WithValue(req.Context(), "csp-nonce", cspNonce)
+
+				csp := `default-src 'none'; `
+				csp += `script-src 'nonce-` + cspNonce + `'; `
+				csp += `style-src 'nonce-` + cspNonce + `'; `
+				csp += `connect-src 'self'; img-src 'self' data:; manifest-src 'self'; media-src 'self'; form-action 'self'; base-uri 'none';`
+
+				log.Debug().Str("siteCsp", csp).Send()
+
+				w.Header().Set(`Content-Security-Policy`, csp)
+
+				next.ServeHTTP(w, req.WithContext(c))
+				return
+			}
+
 			next.ServeHTTP(w, req)
 		})
 	}
@@ -247,6 +259,9 @@ func main() {
 
 	fh.Debug = os.Getenv("FH_DEBUG") != ""
 	flag.BoolVar(&fh.Debug, "debug", fh.Debug, "Enable debug logging for development ENV: FH_DEBUG")
+
+	fh.CSPDisabled = os.Getenv("FH_CSP_OFF") != ""
+	flag.BoolVar(&fh.CSPDisabled, "csp-off", fh.CSPDisabled, "Disable Content-Security-Policy nonces ENV: FH_CSP_OFF")
 
 	const DEFAULT_UPLOAD_LIMIT = 1024 * 1024 * 1024
 
@@ -291,31 +306,9 @@ func main() {
 	if err := os.MkdirAll(fh.BufferDir, os.ModePerm); !errors.Is(err, os.ErrExist) {
 		log.Error().Err(err).Msg("Failed to create buffer directory")
 	}
-
-	/*
-		// We actually need to landlock after creating all the files we reference
-		// in the landlock or it will fail
-		err = landlock.V2.BestEffort().RestrictPaths(
-			landlock.RWDirs(fh.StorageDir, fh.BufferDir),
-			landlock.RWFiles(fh.MetadataFile),
-		)
-		if err != nil {
-			log.Error().Err(err).Msg("Could not landlock")
-		}
-	*/
-
-	// Test if landlock actually works on whatever fucked kernel you're
-	// probably using
-	_, err = os.Open("/etc/passwd")
-	if err == nil {
-		log.Error().Msg("Landlock failed, could open /etc/passwd")
-	} else {
-		log.Info().Err(err).Msg("Landlocked")
-	}
-
 	r := mux.NewRouter()
 
-	r.Use(CSPMiddleware())
+	r.Use(fh.CSPMiddleware())
 
 	// Serve multiple images in a gallery
 	r.HandleFunc("/g/{files}", fh.GalleryHandler)
@@ -323,24 +316,49 @@ func main() {
 	// Serve files from data dir statically
 	r.PathPrefix("/u/").Handler(http.StripPrefix("/u/", NoDirectoryList(http.FileServer(http.Dir(fh.StorageDir)))))
 
-	r.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		indexPage, err := assetsFs.ReadFile("assets/index.html")
+		if err != nil {
+			log.Error().Err(err).Msg("failed to retrieve index.html")
+		}
 		t, _ := template.New("index").Parse(string(indexPage))
 
 		t.Execute(w, map[string]interface{}{
 			"PublicUrl": fh.PublicUrl,
 			"SiteName":  fh.SiteName,
 			"Debug":     fh.Debug,
+			"CSPNonce":  r.Context().Value("csp-nonce"),
 		})
 	}).Methods("GET")
 
+	serveAsset := func(w http.ResponseWriter, path string, contentType string) {
+		w.Header().Add("Content-Type", contentType)
+		assetBytes, err := assetsFs.ReadFile(path)
+		if err != nil {
+			log.Error().Err(err).Str("path", path).Msg("failed to retrieve")
+		}
+		w.Write(assetBytes)
+	}
+
 	r.HandleFunc("/asset/filehole.css", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Add("Content-Type", "text/css")
-		w.Write(frontendCss)
+		serveAsset(w, "assets/filehole.css", "text/css")
+	}).Methods("GET")
+
+	r.HandleFunc("/asset/pico.min.css", func(w http.ResponseWriter, _ *http.Request) {
+		serveAsset(w, "assets/pico.min.css", "text/css")
+	}).Methods("GET")
+
+	r.HandleFunc("/asset/jquery-3.7.1.min.js", func(w http.ResponseWriter, _ *http.Request) {
+		serveAsset(w, "assets/jquery-3.7.1.min.js", "text/javascript")
 	}).Methods("GET")
 
 	r.HandleFunc("/asset/filehole.js", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Add("Content-Type", "text/javascript")
 
+		frontendJs, err := assetsFs.ReadFile("assets/filehole.js")
+		if err != nil {
+			log.Error().Err(err).Msg("failed to retrieve filehole.js")
+		}
 		t, _ := txttmpl.New("fileholejs").Parse(string(frontendJs))
 
 		t.Execute(w, map[string]interface{}{

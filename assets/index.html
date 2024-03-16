@@ -3,11 +3,10 @@
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ .SiteName }}</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" integrity="sha384-7P0NVe9LPDbUCAF+fH2R8Egwz1uqNH83Ns/bfJY0fN2XCDBMUI2S9gGzIOIRBKsA" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.colors.min.css" integrity="sha384-xIaEj6VQKsdt/Vgycwpnm2tX6ERPk4Y2nM6EaD9pEQTB/S6+YpK5HuEyiBXfW0HI" crossorigin="anonymous">
-    <link rel="stylesheet" href="/asset/filehole.css"/>
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha384-1H217gwSVyLSIfaLxHbE7dRb3v4mYCKbpQvzx0cegeju1MVsGrX5xXxAvs/HgeFs" crossorigin="anonymous"></script>
-    <script src="/asset/filehole.js"></script>
+    <link rel="stylesheet" href="/asset/pico.min.css"{{ if .CSPNonce }} nonce="{{ .CSPNonce }}"{{ end }}>
+    <link rel="stylesheet" href="/asset/filehole.css"{{ if .CSPNonce }} nonce="{{ .CSPNonce }}"{{ end }}>
+    <script src="/asset/jquery-3.7.1.min.js"{{ if .CSPNonce }} nonce="{{ .CSPNonce }}"{{ end }}></script>
+    <script src="/asset/filehole.js"{{ if .CSPNonce }} nonce="{{ .CSPNonce }}"{{ end }}></script>
   </head>
   <body>
     <main class="container">

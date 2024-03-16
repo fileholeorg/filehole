@@ -48,3 +48,27 @@ Filehole can be configured using environment variables or arguments.
         Data storage folder ENV: FH_STORAGE_DIR (default "./data")
     -upload-limit int
         Max allowed size for a HTTP request in bytes ENV: FH_UPLOAD_LIMIT (default 1073741824)
+
+## Dependencies used
+
+### Frontend
+
+- [Pico CSS](https://picocss.com/)
+
+### Frontend (with Javascript enabled)
+
+- [jQuery](https://jquery.com/)
+
+### Backend
+
+- [rs/zerolog](https://github.com/rs/zerolog)
+  Used for logging. Should be replaced with [log/slog](https://pkg.go.dev/log/slog) now.
+
+- [boltdb/bolt](https://github.com/boltdb/bolt)
+  Used to store expiry dates of files. Tempted to just use file system creation time but this is not universal.
+
+- [gorilla/mux](https://github.com/gorilla/mux)
+  Can maybe be replaced with [net/http](https://go.dev/blog/routing-enhancements) now.
+
+- [gabriel-vasile/mimetype](https://github.com/gabriel-vasile/mimetype)
+  The function used from this lib is present in stdlib but a bit slower there

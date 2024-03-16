@@ -6,6 +6,8 @@ Filehole is a lightweight ephemeral file hosting service written in Go.
 
 ## Installation
 
+### Go
+
 To install Filehole, use the following command:
 
 ```bash
@@ -13,6 +15,14 @@ go install github.com/fileholeorg/filehole@latest
 ```
 
 This will download and install the latest version of Filehole.
+
+### Docker
+
+There is a container, you will have to build it yourself for now.
+
+`docker build -t filehole:latest .`
+
+Bind mounting `/data` and `/buffer` recommended if you want files to persist restarts and upgrades.
 
 ## Configuration
 

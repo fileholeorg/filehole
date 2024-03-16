@@ -374,7 +374,7 @@ func main() {
 
 	http.Handle("/", r)
 
-	go ExpiryDoer()
+	go fh.ExpiryDoer()
 
 	http.ListenAndServe(fh.Bind, r)
 

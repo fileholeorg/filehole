@@ -7,10 +7,9 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 )
 
-func ExpiryDoer() {
+func (fh *FileholeServer) ExpiryDoer() {
 	for {
 		removed := 0
 		db.Update(func(tx *bolt.Tx) error {
@@ -23,7 +22,7 @@ func ExpiryDoer() {
 					continue
 				}
 				if time.Now().After(time.Unix(expiryTime, 0)) {
-					os.Remove(viper.GetString("filedir") + "/" + string(k))
+					os.Remove(fh.StorageDir + "/" + string(k))
 					removed += 1
 					c.Delete()
 				}

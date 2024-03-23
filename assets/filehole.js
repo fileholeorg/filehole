@@ -78,6 +78,25 @@ $(function () {
   $("#file-history").show();
   // ---
 
+  $("body").on("drop", (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    if (uploading) {
+      return;
+    }
+
+    for (const f of e.originalEvent.dataTransfer.files) {
+      addToQueue(f);
+    }
+  });
+
+  $("body").on("dragover", (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    e.originalEvent.dataTransfer.dropEffect = "copy";
+  });
+
   $("#upload-start").on("click", uploadFileQueue);
 
   renderFileHistory();

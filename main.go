@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"embed"
+	"encoding/json"
 	"errors"
 	"flag"
 	"html"
@@ -18,6 +19,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"golang.org/x/sys/unix"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -195,15 +197,17 @@ func (fh FileholeServer) UploadHandler(w http.ResponseWriter, r *http.Request) {
 var assetsFs embed.FS
 
 type FileholeServer struct {
-	Bind         string
-	MetadataFile string
-	StorageDir   string
-	BufferDir    string
-	PublicUrl    string
-	ServeUrl     string
-	SiteName     string
-	Debug        bool
-	CSPDisabled  bool
+	Bind             string
+	MetadataFile     string
+	StorageDir       string
+	BufferDir        string
+	PublicUrl        string
+	ServeUrl         string
+	SiteName         string
+	UpstreamProvider string
+	Region           string
+	Debug            bool
+	CSPDisabled      bool
 
 	UploadLimit int64
 }
@@ -238,6 +242,24 @@ func (fh *FileholeServer) CSPMiddleware() mux.MiddlewareFunc {
 	}
 }
 
+func (fh FileholeServer) InfoHandler(w http.ResponseWriter, r *http.Request) {
+	resp := map[string]interface{}{
+		"PublicUrl":        fh.PublicUrl,
+		"UpstreamProvider": fh.UpstreamProvider,
+		"Region":           fh.Region,
+	}
+
+	var stat unix.Statfs_t
+	unix.Statfs(fh.StorageDir, &stat)
+
+	// Available blocks * size per block = available space in bytes
+	resp["FreeBytes"] = stat.Bavail * uint64(stat.Bsize)
+
+	infoResp, _ := json.Marshal(resp)
+	w.Header().Add("Content-Type", "application/json")
+	w.Write(infoResp)
+}
+
 func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
@@ -258,6 +280,8 @@ func main() {
 	flag.StringVar(&fh.PublicUrl, "public-url", getEnv("FH_PUBLIC_URL", fhPublicUrlDefault), "Internet facing URL of the base of the site ENV: FH_PUBLIC_URL")
 	flag.StringVar(&fh.ServeUrl, "serve-url", getEnv("FH_SERVE_URL", fhPublicUrlDefault), "Internet facing URL of the base of uploads, only for using a CDN, object storage, etc. ENV: FH_SERVE_URL")
 	flag.StringVar(&fh.SiteName, "site-name", getEnv("FH_SITE_NAME", "Filehole"), "User facing website branding ENV: FH_SITE_NAME")
+	flag.StringVar(&fh.UpstreamProvider, "upstream-provider", getEnv("FH_UPSTREAM_PROVIDER", ""), "User facing upstream provider i.e. AWS ENV: FH_UPSTREAM_PROVIDER")
+	flag.StringVar(&fh.Region, "region", getEnv("FH_SITE_REGION", ""), "User facing region i.e. us-east-1 ENV: FH_SITE_REGION")
 
 	fh.Debug = os.Getenv("FH_DEBUG") != ""
 	flag.BoolVar(&fh.Debug, "debug", fh.Debug, "Enable debug logging for development ENV: FH_DEBUG")
@@ -326,10 +350,12 @@ func main() {
 		t, _ := template.New("index").Parse(string(indexPage))
 
 		t.Execute(w, map[string]interface{}{
-			"PublicUrl": fh.PublicUrl,
-			"SiteName":  fh.SiteName,
-			"Debug":     fh.Debug,
-			"CSPNonce":  r.Context().Value("csp-nonce"),
+			"PublicUrl":        fh.PublicUrl,
+			"SiteName":         fh.SiteName,
+			"Region":           fh.Region,
+			"UpstreamProvider": fh.UpstreamProvider,
+			"Debug":            fh.Debug,
+			"CSPNonce":         r.Context().Value("csp-nonce"),
 		})
 	}).Methods("GET")
 
@@ -369,6 +395,8 @@ func main() {
 			"Debug":     fh.Debug,
 		})
 	}).Methods("GET")
+
+	r.HandleFunc("/info", fh.InfoHandler).Methods("GET")
 
 	r.HandleFunc("/", fh.UploadHandler).Methods("POST")
 

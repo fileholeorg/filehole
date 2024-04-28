@@ -12,6 +12,7 @@ import (
 	"html/template"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -48,7 +49,7 @@ func (fh FileholeServer) GalleryHandler(w http.ResponseWriter, r *http.Request) 
 	w.Write([]byte(`<!DOCTYPE html><html><head><style>body { background-color: black; color: white; }</style></head><body>`))
 
 	for _, i := range strings.Split(v["files"], ",") {
-		link := fh.PublicUrl + `/u/` + i
+		link := fh.PublicUrl.String() + `/u/` + i
 		w.Write([]byte(`<p>` + html.EscapeString(i) + `</p><a href="` + html.EscapeString(link) + `">` + `<img width=500em src="` + html.EscapeString(link) + `"></img></a>`))
 	}
 
@@ -197,19 +198,17 @@ func (fh FileholeServer) UploadHandler(w http.ResponseWriter, r *http.Request) {
 var assetsFs embed.FS
 
 type FileholeServer struct {
-	Bind             string
-	MetadataFile     string
-	StorageDir       string
-	BufferDir        string
-	PublicUrl        string
-	ServeUrl         string
-	SiteName         string
-	UpstreamProvider string
-	Region           string
-	Debug            bool
-	CSPDisabled      bool
-
+	Bind         string
+	MetadataFile string
+	StorageDir   string
+	BufferDir    string
+	ServeUrl     string
+	SiteName     string
+	OtherHoles   string
+	OtherHole
 	UploadLimit int64
+	Debug       bool
+	CSPDisabled bool
 }
 
 func (fh *FileholeServer) CSPMiddleware() mux.MiddlewareFunc {
@@ -243,22 +242,57 @@ func (fh *FileholeServer) CSPMiddleware() mux.MiddlewareFunc {
 }
 
 func (fh FileholeServer) InfoHandler(w http.ResponseWriter, r *http.Request) {
-	resp := map[string]interface{}{
-		"PublicUrl":        fh.PublicUrl,
-		"UpstreamProvider": fh.UpstreamProvider,
-		"Region":           fh.Region,
+	resp := OtherHole{
+		PublicUrl:        fh.PublicUrl,
+		UpstreamProvider: fh.UpstreamProvider,
+		Region:           fh.Region,
+		Country:          fh.Country,
 	}
 
 	var stat unix.Statfs_t
 	unix.Statfs(fh.StorageDir, &stat)
 
 	// Available blocks * size per block = available space in bytes
-	resp["FreeBytes"] = stat.Bavail * uint64(stat.Bsize)
+	resp.FreeBytes = (stat.Bavail * uint64(stat.Bsize))
 
-	infoResp, _ := json.Marshal(resp)
+	infoResp, err := json.Marshal(&resp)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to marshal info response")
+	}
+
 	w.Header().Add("Content-Type", "application/json")
 	w.Write(infoResp)
 }
+
+// An alternative hole
+type OtherHole struct {
+	PublicUrl        *url.URL
+	UpstreamProvider string
+	Region           string
+	Country          string
+	FreeBytes        uint64
+}
+
+func (o *OtherHole) RefreshInfo() error {
+	resp, err := http.Get(o.PublicUrl.JoinPath("/info").String())
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	m, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(m, o); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+var otherHoles = []OtherHole{}
 
 func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
@@ -277,17 +311,23 @@ func main() {
 	flag.StringVar(&fh.MetadataFile, "metadata-path", getEnv("FH_METADATA_FILE", "./filehole.db"), "File metadata storage KV store filename ENV: FH_METADATA_FILE")
 	flag.StringVar(&fh.StorageDir, "storage-dir", getEnv("FH_STORAGE_DIR", "./data"), "Data storage folder ENV: FH_STORAGE_DIR")
 	flag.StringVar(&fh.BufferDir, "buffer-dir", getEnv("FH_BUFFER_DIR", "./buffer"), "Buffer folder for uploads ENV: FH_STORAGE_DIR")
-	flag.StringVar(&fh.PublicUrl, "public-url", getEnv("FH_PUBLIC_URL", fhPublicUrlDefault), "Internet facing URL of the base of the site ENV: FH_PUBLIC_URL")
-	flag.StringVar(&fh.ServeUrl, "serve-url", getEnv("FH_SERVE_URL", fhPublicUrlDefault), "Internet facing URL of the base of uploads, only for using a CDN, object storage, etc. ENV: FH_SERVE_URL")
 	flag.StringVar(&fh.SiteName, "site-name", getEnv("FH_SITE_NAME", "Filehole"), "User facing website branding ENV: FH_SITE_NAME")
 	flag.StringVar(&fh.UpstreamProvider, "upstream-provider", getEnv("FH_UPSTREAM_PROVIDER", ""), "User facing upstream provider i.e. AWS ENV: FH_UPSTREAM_PROVIDER")
 	flag.StringVar(&fh.Region, "region", getEnv("FH_SITE_REGION", ""), "User facing region i.e. us-east-1 ENV: FH_SITE_REGION")
+	flag.StringVar(&fh.Country, "country", getEnv("FH_SITE_COUNTRY", ""), "ISO 3166 country code i.e. US ENV: FH_SITE_COUNTRY")
+	flag.StringVar(&fh.OtherHoles, "other-holes", getEnv("FH_OTHER_HOLES", ""), "Alternative holes as a comma separated list ENV: FH_OTHER_HOLES")
 
 	fh.Debug = os.Getenv("FH_DEBUG") != ""
 	flag.BoolVar(&fh.Debug, "debug", fh.Debug, "Enable debug logging for development ENV: FH_DEBUG")
 
 	fh.CSPDisabled = os.Getenv("FH_CSP_OFF") != ""
 	flag.BoolVar(&fh.CSPDisabled, "csp-off", fh.CSPDisabled, "Disable Content-Security-Policy nonces ENV: FH_CSP_OFF")
+
+	pubUrl := ""
+	serveUrl := ""
+
+	flag.StringVar(&pubUrl, "public-url", getEnv("FH_PUBLIC_URL", fhPublicUrlDefault), "Internet facing URL of the base of the site ENV: FH_PUBLIC_URL")
+	flag.StringVar(&serveUrl, "serve-url", getEnv("FH_SERVE_URL", fhPublicUrlDefault), "Internet facing URL of the base of uploads, only for using a CDN, object storage, etc. ENV: FH_SERVE_URL")
 
 	const DEFAULT_UPLOAD_LIMIT = 1024 * 1024 * 1024
 
@@ -309,6 +349,39 @@ func main() {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 		log.Warn().Msg("Debug logging is enabled")
 	}
+
+	// Verify the Public URL
+	if u, err := url.Parse(pubUrl); err != nil {
+		log.Fatal().Err(err).Msg("failed to parse public url")
+	} else {
+		fh.PublicUrl = u
+	}
+
+	// If you only want the one hole
+	if fh.OtherHoles != "" {
+		for _, altUrl := range strings.Split(fh.OtherHoles, ",") {
+			u, err := url.Parse(altUrl)
+			if err != nil {
+				log.Fatal().Err(err).Msg("failed to parse other hole url")
+			}
+
+			otherHoles = append(otherHoles, OtherHole{
+				PublicUrl: u,
+			})
+		}
+	}
+
+	// Refresh the other hole's info in the background every 5 minutes
+	go func() {
+		for {
+			for _, otherHole := range otherHoles {
+				if err := otherHole.RefreshInfo(); err != nil {
+					log.Error().Err(err).Stringer("url", otherHole.PublicUrl).Msg("failed to refresh info for other hole")
+				}
+			}
+			time.Sleep(5 * time.Minute)
+		}
+	}()
 
 	var err error
 	db, err = bolt.Open(fh.MetadataFile, 0600, nil)
@@ -347,16 +420,23 @@ func main() {
 		if err != nil {
 			log.Error().Err(err).Msg("failed to retrieve index.html")
 		}
-		t, _ := template.New("index").Parse(string(indexPage))
+		t, err := template.New("").Parse(string(indexPage))
+		if err != nil {
+			log.Error().Err(err).Msg("failed to parse index.html template")
+		}
 
-		t.Execute(w, map[string]interface{}{
-			"PublicUrl":        fh.PublicUrl,
+		if err := t.Execute(w, map[string]interface{}{
+			"PublicUrl":        fh.PublicUrl.String(),
 			"SiteName":         fh.SiteName,
 			"Region":           fh.Region,
+			"Country":          fh.Country,
 			"UpstreamProvider": fh.UpstreamProvider,
 			"Debug":            fh.Debug,
 			"CSPNonce":         r.Context().Value("csp-nonce"),
-		})
+			"OtherHoles":       otherHoles,
+		}); err != nil {
+			log.Error().Err(err).Msg("failed to render template")
+		}
 	}).Methods("GET")
 
 	serveAsset := func(w http.ResponseWriter, path string, contentType string) {
@@ -390,7 +470,7 @@ func main() {
 		t, _ := txttmpl.New("fileholejs").Parse(string(frontendJs))
 
 		t.Execute(w, map[string]interface{}{
-			"PublicUrl": fh.PublicUrl,
+			"PublicUrl": fh.PublicUrl.String(),
 			"SiteName":  fh.SiteName,
 			"Debug":     fh.Debug,
 		})

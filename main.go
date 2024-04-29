@@ -232,8 +232,6 @@ func (fh *FileholeServer) CSPMiddleware() mux.MiddlewareFunc {
 				csp += `style-src 'nonce-` + cspNonce + `'; `
 				csp += `connect-src 'self'; img-src 'self' data:; manifest-src 'self'; media-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none';`
 
-				log.Debug().Str("siteCsp", csp).Send()
-
 				w.Header().Set(`Content-Security-Policy`, csp)
 
 				next.ServeHTTP(w, req.WithContext(c))
@@ -277,7 +275,7 @@ type OtherHole struct {
 	FreeBytes        uint64
 }
 
-func (o *OtherHole) RefreshInfo() error {
+func RefreshInfo(o *OtherHole) error {
 	resp, err := http.Get(o.PublicUrl.JoinPath("/info").String())
 	if err != nil {
 		return err
@@ -293,10 +291,12 @@ func (o *OtherHole) RefreshInfo() error {
 		return err
 	}
 
+	log.Info().Stringer("PublicUrl", o.PublicUrl).Uint64("free", o.FreeBytes).Str("provider", o.UpstreamProvider).Str("country", o.Country).Str("region", o.Region).Msg("Refreshed info from other hole")
+
 	return nil
 }
 
-var otherHoles = []OtherHole{}
+var otherHoles = []*OtherHole{}
 
 func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
@@ -320,6 +320,7 @@ func main() {
 	flag.StringVar(&fh.Region, "region", getEnv("FH_SITE_REGION", ""), "User facing region i.e. us-east-1 ENV: FH_SITE_REGION")
 	flag.StringVar(&fh.Country, "country", getEnv("FH_SITE_COUNTRY", ""), "ISO 3166 country code i.e. US ENV: FH_SITE_COUNTRY")
 	flag.StringVar(&fh.OtherHoles, "other-holes", getEnv("FH_OTHER_HOLES", ""), "Alternative holes as a comma separated list ENV: FH_OTHER_HOLES")
+	flag.StringVar(&fh.ServeUrl, "serve-url", getEnv("FH_SERVE_URL", fhPublicUrlDefault), "Internet facing URL of the base of uploads, only for using a CDN, object storage, etc. ENV: FH_SERVE_URL")
 
 	fh.Debug = os.Getenv("FH_DEBUG") != ""
 	flag.BoolVar(&fh.Debug, "debug", fh.Debug, "Enable debug logging for development ENV: FH_DEBUG")
@@ -328,10 +329,7 @@ func main() {
 	flag.BoolVar(&fh.CSPDisabled, "csp-off", fh.CSPDisabled, "Disable Content-Security-Policy nonces ENV: FH_CSP_OFF")
 
 	pubUrl := ""
-	serveUrl := ""
-
 	flag.StringVar(&pubUrl, "public-url", getEnv("FH_PUBLIC_URL", fhPublicUrlDefault), "Internet facing URL of the base of the site ENV: FH_PUBLIC_URL")
-	flag.StringVar(&serveUrl, "serve-url", getEnv("FH_SERVE_URL", fhPublicUrlDefault), "Internet facing URL of the base of uploads, only for using a CDN, object storage, etc. ENV: FH_SERVE_URL")
 
 	const DEFAULT_UPLOAD_LIMIT = 1024 * 1024 * 1024
 
@@ -369,7 +367,7 @@ func main() {
 				log.Fatal().Err(err).Msg("failed to parse other hole url")
 			}
 
-			otherHoles = append(otherHoles, OtherHole{
+			otherHoles = append(otherHoles, &OtherHole{
 				PublicUrl: u,
 			})
 		}
@@ -379,7 +377,7 @@ func main() {
 	go func() {
 		for {
 			for _, otherHole := range otherHoles {
-				if err := otherHole.RefreshInfo(); err != nil {
+				if err := RefreshInfo(otherHole); err != nil {
 					log.Error().Err(err).Stringer("url", otherHole.PublicUrl).Msg("failed to refresh info for other hole")
 				}
 			}

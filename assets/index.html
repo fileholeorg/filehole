@@ -11,8 +11,22 @@
   <body>
     <main class="container">
       <section>
+        {{ define "otherhole" }}
+        <a href="{{ printf "%s" .PublicUrl }}">
+          <article>
+            <div>{{ .UpstreamProvider }} - {{ .Region }}, {{ .Country }}</div>
+          </article>
+        </a>
+        {{ end }}
         <h1>{{ .SiteName }}</h1>
-        <p>on {{ .UpstreamProvider }} in {{ .Region }}</p>
+        <p>on {{ .UpstreamProvider }} - {{ .Region }}, {{ .Country}}</p>
+        {{ if and .UpstreamProvider .Region }}
+          <div class="grid">
+            {{ range .OtherHoles }}
+              {{ template "otherhole" . }}
+            {{ end }}
+          </div>
+        {{ end }}
         <p>CTRL + V to upload by paste</p>
       </section>
       <article>

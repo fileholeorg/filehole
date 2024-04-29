@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{{ .SiteName }}</title>
+    <title>{{ .SiteName }} - {{ .Nickname }}</title>
     <link rel="stylesheet" href="/asset/pico.min.css"{{ if .CSPNonce }} nonce="{{ .CSPNonce }}"{{ end }}>
     <link rel="stylesheet" href="/asset/filehole.css"{{ if .CSPNonce }} nonce="{{ .CSPNonce }}"{{ end }}>
     <script src="/asset/jquery-3.7.1.min.js"{{ if .CSPNonce }} nonce="{{ .CSPNonce }}"{{ end }}></script>
@@ -14,18 +14,25 @@
         {{ define "otherhole" }}
         <a href="{{ printf "%s" .PublicUrl }}">
           <article>
-            <div>{{ .UpstreamProvider }} - {{ .Region }}, {{ .Country }}</div>
+            <div>
+              <p><b>{{ .Nickname }}</b></p>
+              <p>{{ .UpstreamProvider }} - {{ .Region }}, {{ .Country }}</p>
+            </div>
           </article>
         </a>
         {{ end }}
-        <h1>{{ .SiteName }}</h1>
-        <p>on {{ .UpstreamProvider }} - {{ .Region }}, {{ .Country}}</p>
+        <h1>{{ .SiteName }} - {{ .Nickname }}</h1>
         {{ if and .UpstreamProvider .Region }}
-          <div class="grid">
-            {{ range .OtherHoles }}
-              {{ template "otherhole" . }}
-            {{ end }}
-          </div>
+          <details>
+          <summary><u>{{ .UpstreamProvider }} - {{ .Region }}, {{ .Country}}</u></summary>
+            <p>Want to put it in a different hole?</p>
+            <div class="grid">
+              {{ range .OtherHoles }}
+                {{ template "otherhole" . }}
+              {{ end }}
+            </div>
+            <hr>
+          </details>
         {{ end }}
         <p>CTRL + V to upload by paste</p>
       </section>

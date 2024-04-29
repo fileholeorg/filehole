@@ -187,7 +187,11 @@ func (fh FileholeServer) UploadHandler(w http.ResponseWriter, r *http.Request) {
 			log.Error().Err(err).Msg("Failed to put expiry")
 		}
 
-		w.Write([]byte(fh.ServeUrl + "/u/" + name + "\n"))
+		outUrl := fh.PublicUrl.String()
+		if fh.ServeUrl != "" {
+			outUrl = fh.ServeUrl
+		}
+		w.Write([]byte(outUrl + "/u/" + name + "\n"))
 	} else {
 		http.Error(w, "partial upload - perhaps exceeded size limit", http.StatusInternalServerError)
 		log.Debug().Msg("shouldUpload was not flagged, partial upload maybe")

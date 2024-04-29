@@ -249,6 +249,7 @@ func (fh FileholeServer) InfoHandler(w http.ResponseWriter, r *http.Request) {
 		UpstreamProvider: fh.UpstreamProvider,
 		Region:           fh.Region,
 		Country:          fh.Country,
+		Nickname:         fh.Nickname,
 	}
 
 	var stat unix.Statfs_t
@@ -269,6 +270,7 @@ func (fh FileholeServer) InfoHandler(w http.ResponseWriter, r *http.Request) {
 // An alternative hole
 type OtherHole struct {
 	PublicUrl        *url.URL
+	Nickname         string
 	UpstreamProvider string
 	Region           string
 	Country          string
@@ -317,6 +319,7 @@ func main() {
 	flag.StringVar(&fh.BufferDir, "buffer-dir", getEnv("FH_BUFFER_DIR", "./buffer"), "Buffer folder for uploads ENV: FH_STORAGE_DIR")
 	flag.StringVar(&fh.SiteName, "site-name", getEnv("FH_SITE_NAME", "Filehole"), "User facing website branding ENV: FH_SITE_NAME")
 	flag.StringVar(&fh.UpstreamProvider, "upstream-provider", getEnv("FH_UPSTREAM_PROVIDER", ""), "User facing upstream provider i.e. AWS ENV: FH_UPSTREAM_PROVIDER")
+	flag.StringVar(&fh.Nickname, "nickname", getEnv("FH_NICKNAME", ""), "User facing name of the server i.e. Filehole ENV: FH_NICKNAME")
 	flag.StringVar(&fh.Region, "region", getEnv("FH_SITE_REGION", ""), "User facing region i.e. us-east-1 ENV: FH_SITE_REGION")
 	flag.StringVar(&fh.Country, "country", getEnv("FH_SITE_COUNTRY", ""), "ISO 3166 country code i.e. US ENV: FH_SITE_COUNTRY")
 	flag.StringVar(&fh.OtherHoles, "other-holes", getEnv("FH_OTHER_HOLES", ""), "Alternative holes as a comma separated list ENV: FH_OTHER_HOLES")
@@ -430,6 +433,7 @@ func main() {
 		if err := t.Execute(w, map[string]interface{}{
 			"PublicUrl":        fh.PublicUrl.String(),
 			"SiteName":         fh.SiteName,
+			"Nickname":         fh.Nickname,
 			"Region":           fh.Region,
 			"Country":          fh.Country,
 			"UpstreamProvider": fh.UpstreamProvider,

@@ -18,6 +18,7 @@
           <article>
             <div>
               <p><b>{{ .Nickname }}</b></p>
+              <p>{{ .FreeBytes | HumanizeBytes }} free</p>
               <p>{{ .UpstreamProvider }} - {{ .Region }}, {{ .Country }}</p>
               <div class="flag flag-{{ .Country | ToLower }}"></div>
             </div>
@@ -27,7 +28,7 @@
         <h1>{{ .SiteName }} - {{ .Nickname }}</h1>
         {{ if and .UpstreamProvider .Region }}
           <details>
-          <summary><u>{{ .UpstreamProvider }} - {{ .Region }}, {{ .Country}}</u></summary>
+          <summary role="button" class="outline">{{ .UpstreamProvider }} - {{ .Region }}, {{ .Country}} - {{ .FreeBytes | HumanizeBytes }} free</summary>
             <p>Want to put it in a different hole?</p>
             <div class="grid">
               {{ range .OtherHoles }}

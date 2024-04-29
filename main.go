@@ -28,6 +28,8 @@ import (
 	"github.com/boltdb/bolt"
 
 	"github.com/gabriel-vasile/mimetype"
+
+	"github.com/dustin/go-humanize"
 )
 
 func shortID(length int64) string {
@@ -271,14 +273,20 @@ func (fh FileholeServer) HolesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(infoResp)
 }
 
+// Periodically update the amount of space left on the storage dir disk
+func (fh *FileholeServer) RefreshFreeBytes() {
+	for {
+		var stat unix.Statfs_t
+		unix.Statfs(fh.StorageDir, &stat)
+
+		// Available blocks * size per block = available space in bytes
+		fh.FreeBytes = (stat.Bavail * uint64(stat.Bsize))
+		time.Sleep(5 * time.Minute)
+	}
+}
+
 func (fh FileholeServer) InfoHandler(w http.ResponseWriter, r *http.Request) {
 	resp := fh.getOwnOtherHole()
-
-	var stat unix.Statfs_t
-	unix.Statfs(fh.StorageDir, &stat)
-
-	// Available blocks * size per block = available space in bytes
-	resp.FreeBytes = (stat.Bavail * uint64(stat.Bsize))
 
 	infoResp, err := json.Marshal(&resp)
 	if err != nil {
@@ -333,6 +341,8 @@ func main() {
 	}
 
 	fh := FileholeServer{}
+	go fh.RefreshFreeBytes()
+
 	fhPublicUrlDefault := getEnv("FH_PUBLIC_URL", "https://filehole.org")
 
 	flag.StringVar(&fh.Bind, "bind", getEnv("FH_BIND", "127.0.0.1:8000"), "Address to bind ENV: FH_BIND")
@@ -448,7 +458,8 @@ func main() {
 			log.Error().Err(err).Msg("failed to retrieve index.html")
 		}
 		t, err := template.New("").Funcs(template.FuncMap{
-			"ToLower": strings.ToLower,
+			"ToLower":       strings.ToLower,
+			"HumanizeBytes": humanize.IBytes,
 		}).Parse(string(indexPage))
 		if err != nil {
 			log.Error().Err(err).Msg("failed to parse index.html template")
@@ -462,6 +473,7 @@ func main() {
 			"Country":          fh.Country,
 			"UpstreamProvider": fh.UpstreamProvider,
 			"Debug":            fh.Debug,
+			"FreeBytes":        fh.FreeBytes,
 			"CSPNonce":         r.Context().Value("csp-nonce"),
 			"OtherHoles":       otherHoles,
 		}); err != nil {

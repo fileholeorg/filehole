@@ -243,14 +243,36 @@ func (fh *FileholeServer) CSPMiddleware() mux.MiddlewareFunc {
 	}
 }
 
-func (fh FileholeServer) InfoHandler(w http.ResponseWriter, r *http.Request) {
-	resp := OtherHole{
+func (fh FileholeServer) getOwnOtherHole() *OtherHole {
+	return &OtherHole{
 		PublicUrl:        fh.PublicUrl,
 		UpstreamProvider: fh.UpstreamProvider,
 		Region:           fh.Region,
 		Country:          fh.Country,
 		Nickname:         fh.Nickname,
+		FreeBytes:        fh.FreeBytes,
 	}
+}
+
+func (fh FileholeServer) HolesHandler(w http.ResponseWriter, r *http.Request) {
+	resp := map[string]*OtherHole{}
+	resp[fh.PublicUrl.String()] = fh.getOwnOtherHole()
+
+	for _, h := range otherHoles {
+		resp[h.PublicUrl.String()] = h
+	}
+
+	infoResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to marshal holes response")
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.Write(infoResp)
+}
+
+func (fh FileholeServer) InfoHandler(w http.ResponseWriter, r *http.Request) {
+	resp := fh.getOwnOtherHole()
 
 	var stat unix.Statfs_t
 	unix.Statfs(fh.StorageDir, &stat)
@@ -497,6 +519,8 @@ func main() {
 	}).Methods("GET")
 
 	r.HandleFunc("/info", fh.InfoHandler).Methods("GET")
+
+	r.HandleFunc("/holes", fh.HolesHandler).Methods("GET")
 
 	r.HandleFunc("/", fh.UploadHandler).Methods("POST")
 

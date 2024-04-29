@@ -72,3 +72,6 @@ Filehole can be configured using environment variables or arguments.
 
 - [gabriel-vasile/mimetype](https://github.com/gabriel-vasile/mimetype)
   The function used from this lib is present in stdlib but a bit slower there
+
+- [dustin/go-humanize](https://github.com/dustin/go-humanize)
+  Only used for humanizing free disk space bytes

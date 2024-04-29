@@ -425,7 +425,9 @@ func main() {
 		if err != nil {
 			log.Error().Err(err).Msg("failed to retrieve index.html")
 		}
-		t, err := template.New("").Parse(string(indexPage))
+		t, err := template.New("").Funcs(template.FuncMap{
+			"ToLower": strings.ToLower,
+		}).Parse(string(indexPage))
 		if err != nil {
 			log.Error().Err(err).Msg("failed to parse index.html template")
 		}
@@ -453,6 +455,18 @@ func main() {
 		}
 		w.Write(assetBytes)
 	}
+
+	r.HandleFunc("/asset/country-flag.css", func(w http.ResponseWriter, _ *http.Request) {
+		serveAsset(w, "assets/country-flag.css", "text/css")
+	}).Methods("GET")
+
+	r.HandleFunc("/asset/country-flag.js", func(w http.ResponseWriter, _ *http.Request) {
+		serveAsset(w, "assets/country-flag.js", "text/javascript")
+	}).Methods("GET")
+
+	r.HandleFunc("/asset/country-flag.png", func(w http.ResponseWriter, _ *http.Request) {
+		serveAsset(w, "assets/country-flag.png", "image/png")
+	}).Methods("GET")
 
 	r.HandleFunc("/asset/filehole.css", func(w http.ResponseWriter, _ *http.Request) {
 		serveAsset(w, "assets/filehole.css", "text/css")

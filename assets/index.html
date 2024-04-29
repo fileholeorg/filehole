@@ -5,6 +5,8 @@
     <title>{{ .SiteName }} - {{ .Nickname }}</title>
     <link rel="stylesheet" href="/asset/pico.min.css"{{ if .CSPNonce }} nonce="{{ .CSPNonce }}"{{ end }}>
     <link rel="stylesheet" href="/asset/filehole.css"{{ if .CSPNonce }} nonce="{{ .CSPNonce }}"{{ end }}>
+    <link rel="stylesheet" href="/asset/country-flag.css"{{ if .CSPNonce }} nonce="{{ .CSPNonce }}"{{ end }}>
+    <script src="/asset/country-flag.js"{{ if .CSPNonce }} nonce="{{ .CSPNonce }}"{{ end }}></script>
     <script src="/asset/jquery-3.7.1.min.js"{{ if .CSPNonce }} nonce="{{ .CSPNonce }}"{{ end }}></script>
     <script src="/asset/filehole.js"{{ if .CSPNonce }} nonce="{{ .CSPNonce }}"{{ end }}></script>
   </head>
@@ -17,6 +19,7 @@
             <div>
               <p><b>{{ .Nickname }}</b></p>
               <p>{{ .UpstreamProvider }} - {{ .Region }}, {{ .Country }}</p>
+              <div class="flag flag-{{ .Country | ToLower }}"></div>
             </div>
           </article>
         </a>
